@@ -1,10 +1,17 @@
 package pe.edu.cibertec.patitas_frontend_wc.controller;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.reactive.function.client.WebClient;
+import pe.edu.cibertec.patitas_frontend_wc.client.AutenticationClient;
 import pe.edu.cibertec.patitas_frontend_wc.dto.LoginRequestDTO;
 import pe.edu.cibertec.patitas_frontend_wc.dto.LoginResponseDTO;
+import pe.edu.cibertec.patitas_frontend_wc.dto.LogoutRequestDTO;
+import pe.edu.cibertec.patitas_frontend_wc.dto.LogoutResponseDTO;
+import pe.edu.cibertec.patitas_frontend_wc.viewmodel.LoginModel;
 import reactor.core.publisher.Mono;
 
 @RestController
@@ -52,4 +59,32 @@ public class LoginControllerAsync {
 
     }
 
+    @Autowired
+    AutenticationClient autenticationClient;
+
+    @PostMapping("/logout")
+    public ResponseEntity<LogoutResponseDTO> logoutFeign(@RequestBody LogoutRequestDTO logoutRequestDTO) {
+
+        if (logoutRequestDTO.tipoDocumento() == null || logoutRequestDTO.tipoDocumento().trim().isEmpty() ||
+                logoutRequestDTO.numeroDocumento() == null || logoutRequestDTO.numeroDocumento().trim().isEmpty()) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new LogoutResponseDTO(false, null,
+                    "Error: No hay parametros válidos para el logout"));
+        }
+
+        try {
+            ResponseEntity<LogoutResponseDTO> response = autenticationClient.logout(logoutRequestDTO);
+
+            if (response.getBody().resultado()) {
+                return ResponseEntity.ok(response.getBody());
+            } else {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                        .body(new LogoutResponseDTO(false, null, "Error: No se pudo cerrar la sesión"));
+            }
+
+        } catch (Exception e) {
+            System.out.println("Error en la desconexión: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new LogoutResponseDTO(false, null, "Error: Ocurrió un problema al cerrar la sesión"));
+        }
+    }
 }
